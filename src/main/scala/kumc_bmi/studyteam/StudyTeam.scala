@@ -1,9 +1,9 @@
 package kumc_bmi.studyteam
 
+import java.sql.Connection
+import java.sql.Connection
 import java.util.Properties
-import java.sql.Connection
-import java.sql.Connection
-import java.sql.ResultSet
+import scala.util.{ Try, Success, Failure }
 
 object StudyTeam {
   def main(argv: Array[String]) {
@@ -14,13 +14,11 @@ object StudyTeam {
 
     val result = DbState.reader(src).run(querySum)
     println(result)
+
+    DBExplore.dumpSchema(src)
   }
 
-  def query[T](q: String): (ResultSet => T) => DB[T] = { f =>
-    DB(conn => f(conn.createStatement().executeQuery(q)))
-  }
-
-  def querySum: DB[String] = StudyTeam.query("SELECT 1+1 as sum") { results =>
+  def querySum: DB[String] = DB.query("SELECT 1+1 as sum") { results =>
     results.next() // hmm... Try?
     results.getString("sum")
   }
@@ -41,21 +39,5 @@ object StudyTeam {
     }
 
     p
-  }
-}
-
-class DBConfig(p: java.util.Properties, name: String) extends Connector {
-  import java.sql.DriverManager
-
-  override def connect(): Connection = connect(new Properties)
-  override def connect(connectionProperties: Properties): java.sql.Connection = {
-    val driver = p.getProperty(name + ".driver")
-    val url = p.getProperty(name + ".url")
-    // sloppy in-place update
-    connectionProperties.put("user", p.getProperty(name + ".username"))
-    connectionProperties.put("password", p.getProperty(name + ".password"))
-    Class.forName(driver)
-    // throws an exception. hmm.
-    DriverManager.getConnection(url, connectionProperties)
   }
 }

@@ -1,6 +1,7 @@
 package kumc_bmi.studyteam
 
 import java.sql.Connection
+import java.sql.ResultSet
 import java.sql.SQLException
 import java.util.Properties
 
@@ -26,6 +27,12 @@ case class DB[A](g: Connection => A) {
     for {
       a <- dba
     } yield f(a)
+  }
+}
+
+object DB {
+  def query[T](q: String): (ResultSet => T) => DB[T] = { f =>
+    DB(conn => f(conn.createStatement().executeQuery(q)))
   }
 }
 
@@ -78,4 +85,80 @@ object DbState {
   private val rollback = DB( c => c.rollback())
 
   private val commit = DB(c => c.commit())
+}
+
+class DBConfig(p: java.util.Properties, name: String) extends Connector {
+  import java.sql.DriverManager
+
+  override def connect(): Connection = connect(new Properties)
+  override def connect(connectionProperties: Properties): java.sql.Connection = {
+    val driver = p.getProperty(name + ".driver")
+    val url = p.getProperty(name + ".url")
+    // sloppy in-place update
+    connectionProperties.put("user", p.getProperty(name + ".username"))
+    connectionProperties.put("password", p.getProperty(name + ".password"))
+    Class.forName(driver)
+    // throws an exception. hmm.
+    DriverManager.getConnection(url, connectionProperties)
+  }
+}
+
+
+object DBExplore {
+  // TODO: pass output stream in as param
+  def dumpSchema(src: Connector) {
+    val tables = DbState.reader(src).run(tableInfo());
+    tables.foreach { i =>
+      if (i.schem != "INFORMATION_SCHEMA") {
+        println(s"create ${i.ty} ${i.schem}.${i.name} ( -- catalog: ${i.cat}")
+
+        try {
+          val cols = DbState.reader(src).run(exploreTable(i.name))
+          cols.foreach(c => println(s"  ${c.label} ${c.typeName}(${c.precision}) -- ${c.pos}"))
+        } catch {
+          case Exception => println(" ... ")
+        }
+
+        println(")")
+      }
+    }
+  }
+
+  /**
+   * assume name is SQL-quoting-safe
+   */
+  case class ColumnInfo(pos: Int, label: String,
+    typeCode: Int, typeName: String, precision: Int)
+
+  def exploreTable(name: String): DB[IndexedSeq[ColumnInfo]] = {
+    // TOP 1 is a MS SQL ism
+    DB.query("SELECT TOP 1 * FROM " + name) { results =>
+      val m = results.getMetaData() // ignore exceptions. hm.
+      for (col <- 1 to m.getColumnCount())
+        yield ColumnInfo(col,
+        m.getColumnLabel(col),
+        m.getColumnType(col),
+        m.getColumnTypeName(col),
+        m.getPrecision(col))
+
+    }
+  }
+
+  case class TableInfo(cat: String, schem: String, name: String, ty: String)
+
+  def tableInfo(): DB[Vector[TableInfo]] = DB(c => {
+    import scala.collection.immutable.VectorBuilder
+
+    val md = c.getMetaData();
+    val rs = md.getTables(null, null, "%", null); //Array("TABLE")
+    val info = new VectorBuilder[TableInfo]()
+    while (rs.next()) {
+      info += TableInfo(
+        rs.getString(1), // could fail? Try? map?
+        rs.getString(2),
+        rs.getString(3),
+        rs.getString(4))
+    }
+    info.result()
+  })
 }
