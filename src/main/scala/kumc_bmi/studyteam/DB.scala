@@ -1,5 +1,6 @@
 package kumc_bmi.studyteam
 
+import java.io.PrintStream
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.SQLException
@@ -31,8 +32,17 @@ case class DB[A](g: Connection => A) {
 }
 
 object DB {
-  def query[T](q: String): (ResultSet => T) => DB[T] = { f =>
-    DB(conn => f(conn.createStatement().executeQuery(q)))
+  def query[T](q: String, params: Option[Array[String]] = None): (ResultSet => T) => DB[T] = { f =>
+    DB(conn => f(params match {
+      case Some(ps) => {
+        val s = conn.prepareStatement(q)
+        for ((value, ix) <- ps zipWithIndex) {
+          s.setString(ix + 1, value)
+        }
+        s.executeQuery()
+      }
+      case None => conn.createStatement().executeQuery(q)
+    }))
   }
 }
 
@@ -106,20 +116,20 @@ class DBConfig(p: java.util.Properties, name: String) extends Connector {
 
 object DBExplore {
   // TODO: pass output stream in as param
-  def dumpSchema(src: Connector) {
+  def dumpSchema(src: Connector, out: PrintStream) {
     val tables = DbState.reader(src).run(tableInfo());
     tables.foreach { i =>
-      if (i.schem != "INFORMATION_SCHEMA") {
-        println(s"create ${i.ty} ${i.schem}.${i.name} ( -- catalog: ${i.cat}")
+      if (! Array("INFORMATION_SCHEMA", "sys").contains(i.schem)) {
+        out.println(s"create ${i.ty} ${i.schem}.${i.name} ( -- catalog: ${i.cat}")
 
         try {
           val cols = DbState.reader(src).run(exploreTable(i.name))
-          cols.foreach(c => println(s"  ${c.label} ${c.typeName}(${c.precision}) -- ${c.pos}"))
+          cols.foreach(c => out.println(s"  ${c.label} ${c.typeName}(${c.precision}) -- ${c.pos}"))
         } catch {
-          case e :Exception => println(" -- $e ")
+          case e :Exception => out.println(" -- $e ")
         }
 
-        println(")")
+        out.println(")")
       }
     }
   }
@@ -162,20 +172,20 @@ object DBExplore {
     info.result()
   })
 
-  def printRow(resultSet: ResultSet) {
+  def printRow(resultSet: ResultSet, on: PrintStream) {
     val rsmd = resultSet.getMetaData();
     val colQty = rsmd.getColumnCount();
     while (resultSet.next()) {
-      println("{")
+      on.println("{")
       for (i <- 1 to colQty) {
         if (resultSet.getObject(i) != null) {
-          if (i > 1) println(",");
+          if (i > 1) on.println(",");
           val name = rsmd.getColumnName(i);
           val value = resultSet.getString(i);
-          print(s"  ${name}: ${value}")
+          on.print(s"  ${name}: ${value}")
         }
       }
-      println("}");
+      on.println("}");
     }
   }
 }
