@@ -116,7 +116,7 @@ object DBExplore {
           val cols = DbState.reader(src).run(exploreTable(i.name))
           cols.foreach(c => println(s"  ${c.label} ${c.typeName}(${c.precision}) -- ${c.pos}"))
         } catch {
-          case Exception => println(" ... ")
+          case e :Exception => println(" -- $e ")
         }
 
         println(")")
@@ -161,4 +161,21 @@ object DBExplore {
     }
     info.result()
   })
+
+  def printRow(resultSet: ResultSet) {
+    val rsmd = resultSet.getMetaData();
+    val colQty = rsmd.getColumnCount();
+    while (resultSet.next()) {
+      println("{")
+      for (i <- 1 to colQty) {
+        if (resultSet.getObject(i) != null) {
+          if (i > 1) println(",");
+          val name = rsmd.getColumnName(i);
+          val value = resultSet.getString(i);
+          print(s"  ${name}: ${value}")
+        }
+      }
+      println("}");
+    }
+  }
 }
