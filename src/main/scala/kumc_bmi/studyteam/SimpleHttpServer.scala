@@ -1,8 +1,9 @@
-package org.test.simplehttpserver
+// ack: http://stackoverflow.com/a/6432180
+
+package kumc_bmi.studyteam
 
 import java.net.InetSocketAddress
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
-import collection.mutable.HashMap
 
 abstract class SimpleHttpServerBase(val socketAddress: String = "127.0.0.1",
                                     val port: Int = 8080,
@@ -10,19 +11,6 @@ abstract class SimpleHttpServerBase(val socketAddress: String = "127.0.0.1",
   private val address = new InetSocketAddress(socketAddress, port)
   private val server = HttpServer.create(address, backlog)
   server.createContext("/", this)
-
-  def redirect(url: String) =
-    <html>
-      <head>
-          <meta http-equiv="Refresh" content={"0," + url}/>
-      </head>
-      <body>
-        You are being redirected to:
-        <a href={url}>
-          {url}
-        </a>
-      </body>
-    </html>
 
   def respond(exchange: HttpExchange, code: Int = 200, body: String = "") {
     val bytes = body.getBytes
@@ -39,6 +27,7 @@ abstract class SimpleHttpServerBase(val socketAddress: String = "127.0.0.1",
 }
 
 abstract class SimpleHttpServer extends SimpleHttpServerBase {
+  import collection.mutable.HashMap
   private val mappings = new HashMap[String, () => Any]
 
   def get(path: String)(action: => Any) = mappings += path -> (() => action)
@@ -54,64 +43,13 @@ abstract class SimpleHttpServer extends SimpleHttpServerBase {
 }
 
 class HelloApp extends SimpleHttpServer {
-  var count = 0
-
-  get("/") {
-    "There's nothing here"
-  }
-
   get("/hello") {
     "Hello, world!"
   }
-
-  get("/markup") {
-    <html>
-      <head>
-        <title>Test Title</title>
-      </head>
-      <body>
-        Test Body
-      </body>
-    </html>
-  }
-
-  def countPage = <html>
-    <head>
-      <title>Test Title</title>
-    </head>
-    <body>
-      Count:
-      {count}<a href="/increaseCount">++</a>
-      <a href="/decreaseCount">--</a>
-      <a href="/resetCount">Reset</a>
-    </body>
-  </html>
-
-  get("/count") {
-    countPage
-  }
-
-  get("/resetCount") {
-    count = 0
-    redirect("/count")
-  }
-
-  get("/increaseCount") {
-    count = count + 1
-    redirect("/count")
-  }
-
-  get("/decreaseCount") {
-    count = count - 1
-    redirect("/count")
-  }
-
-  get("/error") {
-    throw new RuntimeException("Bad bad error occurred")
-  }
 }
 
-object Main {
+// sbt> runMain kumc_bmi.studyteam.WebServer
+object WebServer {
 
   def main(args: Array[String]) {
     val server = new HelloApp()
