@@ -30,6 +30,14 @@ object StudyTeam {
     }
     val src = new DBConfig(config, "src")
 
+    arg("--encrypt") foreach { clearText =>
+      println(new SymmetricKey("password12345678").encrypt(clearText))
+    }
+
+    arg("--decrypt") foreach { cipherText =>
+      println(new SymmetricKey("password12345678").decrypt(cipherText))
+    }
+
     if (flag("--select")) {
       val result = DbState.reader(src).run(querySum)
       println(result)
@@ -167,5 +175,29 @@ class StudyServer(src: Connector) extends SimpleHttpServerBase {
       }
       case _ => respond(exchange, 404)
     }
+  }
+}
+
+// ECB is subject to replay attack; getting CBC working seems
+// to take more time than is justifyable today.
+class SymmetricKey(secret: String) {
+  import javax.crypto.{Cipher}
+  import javax.crypto.spec.{SecretKeySpec}
+
+  val algorithmName = "AES";  // or DES
+  val secretKey = new SecretKeySpec(secret.getBytes("UTF-8"), algorithmName)
+  val cipher = Cipher.getInstance(algorithmName + "/ECB/PKCS5Padding")
+
+  def encrypt(clearText: String): String = {
+    cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+    cipher.doFinal(clearText.getBytes("UTF8"))
+      .map("%02X" format _).mkString
+  }
+
+  def decrypt(cipherHex: String): String = {
+    val cipherBytes = cipherHex.sliding(2, 2).toArray.map(Integer.parseInt(_, 16).toByte)
+
+    cipher.init(Cipher.DECRYPT_MODE, secretKey)
+    new String(cipher.doFinal(cipherBytes), "UTF8")
   }
 }
