@@ -104,7 +104,7 @@ SELECT p.lastName, p.firstName
 from _studyTeamMemberInfo tm
 join KU_IRBSubmissionView irb on irb.ParentStudyOid = tm.owningEntity
 join KU_PersonView p on p.OID = tm.[studyTeamMember.oid]
-where [Full Study Title] like ('%' + ? + '%') and irb.State = 'Approved'
+where [Full Study Title] like ('%' + ? + '%')
 """, Some(Array(title)))
   }
 
