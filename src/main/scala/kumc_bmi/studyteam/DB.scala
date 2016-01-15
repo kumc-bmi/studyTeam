@@ -114,78 +114,72 @@ class DBConfig(p: java.util.Properties, name: String) extends Connector {
 }
 
 
-object DBExplore {
-  // TODO: pass output stream in as param
-  def dumpSchema(src: Connector, out: PrintStream) {
-    val tables = DbState.reader(src).run(tableInfo());
-    tables.foreach { i =>
-      if (! Array("INFORMATION_SCHEMA", "sys").contains(i.schem)) {
-        out.println(s"create ${i.ty} ${i.schem}.${i.name} ( -- catalog: ${i.cat}")
-
-        try {
-          val cols = DbState.reader(src).run(exploreTable(i.name))
-          cols.foreach(c => out.println(s"  ${c.label} ${c.typeName}(${c.precision}) -- ${c.pos}"))
-        } catch {
-          case e :Exception => out.println(" -- $e ")
-        }
-
-        out.println(")")
-      }
-    }
+case class TableInfo(cat: String, schem: String, name: String, ty: String) {
+  def asSQL(cols: Vector[ColumnInfo]): String = {
+    cols.map(_.asSQL).mkString(s"create $ty $schem.$name ( -- catalog: $cat\n", ",\n", ")\n")
   }
-
-  /**
-   * assume name is SQL-quoting-safe
-   */
-  case class ColumnInfo(pos: Int, label: String,
-    typeCode: Int, typeName: String, precision: Int)
-
-  def exploreTable(name: String): DB[IndexedSeq[ColumnInfo]] = {
-    // TOP 1 is a MS SQL ism
-    DB.query("SELECT TOP 1 * FROM " + name) { results =>
-      val m = results.getMetaData() // ignore exceptions. hm.
-      for (col <- 1 to m.getColumnCount())
-        yield ColumnInfo(col,
-        m.getColumnLabel(col),
-        m.getColumnType(col),
-        m.getColumnTypeName(col),
-        m.getPrecision(col))
-
-    }
-  }
-
-  case class TableInfo(cat: String, schem: String, name: String, ty: String)
-
-  def tableInfo(): DB[Vector[TableInfo]] = DB(c => {
-    import scala.collection.immutable.VectorBuilder
-
+}
+object TableInfo {
+  def discover: DB[Vector[TableInfo]] = DB(c => {
     val md = c.getMetaData();
-    val rs = md.getTables(null, null, "%", null); //Array("TABLE")
-    val info = new VectorBuilder[TableInfo]()
-    while (rs.next()) {
-      info += TableInfo(
+    new RsIterator(md.getTables(null, null, "%", null)).map { rs =>
+      TableInfo(
         rs.getString(1), // could fail? Try? map?
         rs.getString(2),
         rs.getString(3),
         rs.getString(4))
-    }
-    info.result()
+    }.to[Vector]
   })
 
-  def printRow(resultSet: ResultSet, on: PrintStream) {
-    val rsmd = resultSet.getMetaData();
-    val colQty = rsmd.getColumnCount();
-    while (resultSet.next()) {
-      on.println("{")
-      for (i <- 1 to colQty) {
-        if (resultSet.getObject(i) != null) {
-          if (i > 1) on.println(",");
-          val name = rsmd.getColumnName(i);
-          val value = resultSet.getString(i);
-          on.print(s"  ${name}: ${value}")
-        }
-      }
-      on.println("}");
+  def dump(src: Connector, out: PrintStream,
+    exclude: Array[String] = Array("INFORMATION_SCHEMA", "sys")) {
+    catalog(src, exclude) foreach { case (table, cols) => out.println(table.asSQL(cols)) }
+  }
+
+  def catalog(src: Connector, exclude: Array[String]): Vector[(TableInfo, Vector[ColumnInfo])] = {
+    def withCols(ti: TableInfo) = {
+      // TOP 1 is a MS SQL ism
+      val cols = DbState.reader(src).run(DB.query("SELECT TOP 1 * FROM " + ti.name) { results => Relation.domains(results) })
+      (ti, cols)
     }
+
+    val tables: Vector[TableInfo] = DbState.reader(src).run(TableInfo.discover)
+    tables map withCols
   }
 }
+
+
+case class ColumnInfo(pos: Int, label: String,
+  typeCode: Int, typeName: String, precision: Int) {
+  def asSQL(): String = s"  [$label] $typeName($precision) -- pos: $pos"
+}
+
+object Relation {
+  def domains(results: ResultSet): Vector[ColumnInfo] = {
+    val m = results.getMetaData() // ignore exceptions. hm.
+    val cols = for (col <- 1 to m.getColumnCount()) yield ColumnInfo(col,
+      m.getColumnLabel(col),
+      m.getColumnType(col),
+      m.getColumnTypeName(col),
+      m.getPrecision(col))
+    cols.to[Vector]
+  }
+
+  // TODO: proper quoting
+  def record(results: ResultSet): Vector[(String, String)] = {
+    domains(results).zipWithIndex.map { case (col, ix) => (col.label, results.getString(ix + 1)) }
+  }
+
+  // TODO: proper quoting
+  def asJSON(results: ResultSet): String = {
+    record(results) map { case (key, value) =>
+      s"""  "$key": $value"""
+    } mkString("{\n", ",\n", "}\n")
+  }
+}
+
+class RsIterator(rs: ResultSet) extends Iterator[ResultSet] {
+  def hasNext: Boolean = rs.next()
+  def next(): ResultSet = rs
+}
+

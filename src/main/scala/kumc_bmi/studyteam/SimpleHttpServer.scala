@@ -47,12 +47,3 @@ class HelloApp extends SimpleHttpServer {
     "Hello, world!"
   }
 }
-
-// sbt> runMain kumc_bmi.studyteam.WebServer
-object WebServer {
-
-  def main(args: Array[String]) {
-    val server = new HelloApp()
-    server.start()
-  }
-}

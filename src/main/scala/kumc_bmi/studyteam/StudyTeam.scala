@@ -36,7 +36,7 @@ object StudyTeam {
     }
 
     if (flag("--dump-schema")) {
-      DBExplore.dumpSchema(src, System.out)
+      TableInfo.dump(src, System.out)
     }
 
     arg("--by-name") foreach { name =>
@@ -55,13 +55,16 @@ object StudyTeam {
       byId(src, id, System.out)
     }
 
+    if (flag("--serve")) {
+      new StudyServer(src).start()
+    }
   }
 
   def exploreQuery(src: Connector, out: PrintStream, sql: String, params: Option[Array[String]] = None) {
     out.println(s"query: $sql params: $params")
     DbState.reader(src).run(DB.query(sql, params) { results =>
       new RsIterator(results)
-        .foreach {r => DBExplore.printRow(r, out) }
+        .foreach {r => out.println(Relation.asJSON(r)) }
     })
   }
 
@@ -105,10 +108,7 @@ where [Full Study Title] like ('%' + ? + '%') and irb.State = 'Approved'
 """, Some(Array(title)))
   }
 
-  def byId(src: Connector, id: String, out: PrintStream) {
-    out.println(s"Members of study with ID=$id:")
-    exploreQuery(src, out,
-      """
+  val idQ = """
 SELECT p.[Employee ID], p.userId, p.accountDisabled
      , p.lastName, p.firstName, p.EmailPreferred, p.BusinesPhone
      , irb.ID, irb.State, irb.[Date Expiration], irb.[Full Study Title]
@@ -116,12 +116,18 @@ from _studyTeamMemberInfo tm
 join KU_IRBSubmissionView irb on irb.ParentStudyOid = tm.owningEntity
 join KU_PersonView p on p.OID = tm.[studyTeamMember.oid]
 where irb.ID = ?
-""", Some(Array(id)))
+"""
+
+  def byId(src: Connector, id: String, out: PrintStream) {
+    out.println(s"Members of study with ID=$id:")
+    out.println(team(src, id))
   }
 
-  class RsIterator(rs: ResultSet) extends Iterator[ResultSet] {
-    def hasNext: Boolean = rs.next()
-    def next(): ResultSet = rs
+  def team(src: Connector, studyId: String): String = {
+    DbState.reader(src).run(
+      DB.query(idQ, Some(Array(studyId))) { results =>
+        new RsIterator(results).map(Relation.asJSON).mkString("[\n", ",\n", "]\n")
+      })
   }
 
   def querySum: DB[String] = DB.query("SELECT 1+1 as sum") { results =>
@@ -145,6 +151,22 @@ where irb.ID = ?
         }
       }
       case None => Failure(new RuntimeException(s"$klass.getResourceAsStream($config_fn) returned null"))
+    }
+  }
+}
+
+class StudyServer(src: Connector) extends SimpleHttpServerBase {
+  import com.sun.net.httpserver.HttpExchange
+
+  val pattern = "id=(.*)".r
+
+  def handle(exchange: HttpExchange) {
+    exchange.getRequestURI.getQuery match {
+      case pattern(id) => {
+        System.err.println(s"GET id=$id")
+        respond(exchange, 200, StudyTeam.team(src, id))
+      }
+      case _ => respond(exchange, 404)
     }
   }
 }
