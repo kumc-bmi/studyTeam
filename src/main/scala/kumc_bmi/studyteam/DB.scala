@@ -165,16 +165,32 @@ object Relation {
     cols.to[Vector]
   }
 
-  // TODO: proper quoting
-  def record(results: ResultSet): Vector[(String, String)] = {
-    domains(results).zipWithIndex.map { case (col, ix) => (col.label, results.getString(ix + 1)) }
+  def record(results: ResultSet): Vector[(String, String, Option[String])] = {
+    domains(results).zipWithIndex.map {
+      case (col, ix) => (col.label, col.typeName, Option(results.getString(ix + 1)))
+    }
   }
 
   // TODO: proper quoting
   def asJSON(results: ResultSet): String = {
-    record(results) map { case (key, value) =>
-      s"""  "$key": $value"""
-    } mkString("{\n", ",\n", "}\n")
+    // more to it than this?
+    def quote(s: Option[String]) = s match {
+      case Some(s) => "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+      case None => "null"
+    }
+
+    record(results) map { case (key, ty, s) => {
+      val expr = ty match {
+        case "int" => s match {
+          case Some(s) => s
+          case None => "null"
+        }
+        case "nvarchar" | "datetime" | "varbinary" | "binary" => quote(s)
+        case other => s"????? $ty: $s"
+      }
+
+      s"""  "$key": $expr"""
+    }} mkString("{\n", ",\n", "}\n")
   }
 }
 
