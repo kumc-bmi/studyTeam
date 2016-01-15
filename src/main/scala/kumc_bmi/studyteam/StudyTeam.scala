@@ -108,7 +108,13 @@ where [Full Study Title] like ('%' + ? + '%') and irb.State = 'Approved'
 """, Some(Array(title)))
   }
 
-  val idQ = """
+  def byId(src: Connector, id: String, out: PrintStream) {
+    out.println(s"Members of study with ID=$id:")
+    out.println(team(src, id))
+  }
+
+  def team(src: Connector, studyId: String): String = {
+    val idQ = """
 SELECT p.[Employee ID], p.userId, p.accountDisabled
      , p.lastName, p.firstName, p.EmailPreferred, p.BusinesPhone
      , irb.ID, irb.State, irb.[Date Expiration], irb.[Full Study Title]
@@ -117,13 +123,6 @@ join KU_IRBSubmissionView irb on irb.ParentStudyOid = tm.owningEntity
 join KU_PersonView p on p.OID = tm.[studyTeamMember.oid]
 where irb.ID = ?
 """
-
-  def byId(src: Connector, id: String, out: PrintStream) {
-    out.println(s"Members of study with ID=$id:")
-    out.println(team(src, id))
-  }
-
-  def team(src: Connector, studyId: String): String = {
     DbState.reader(src).run(
       DB.query(idQ, Some(Array(studyId))) { results =>
         new RsIterator(results).map(Relation.asJSON).mkString("[\n", ",\n", "]\n")
