@@ -1,10 +1,13 @@
-// ack: http://stackoverflow.com/a/6432180
-
 package kumc_bmi.studyteam
 
 import java.net.InetSocketAddress
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 
+/** HTTP server using the HttpServer class that is built-in in JDK6.
+  *
+  *  ack: re "Bootstrapping a web server in Scala"
+  *  [[http://stackoverflow.com/a/6432180 Tommy Jun 21 '11 ]]
+  */
 abstract class SimpleHttpServerBase(val socketAddress: String = "127.0.0.1",
                                     val port: Int = 8080,
                                     val backlog: Int = 0) extends HttpHandler {
@@ -26,6 +29,10 @@ abstract class SimpleHttpServerBase(val socketAddress: String = "127.0.0.1",
   def stop(delay: Int = 1) = server.stop(delay)
 }
 
+/** HTTP Server with mappings from paths to handlers
+  *
+  * NOTE: for documentation purposes only; not used by [[StudyTeam]].
+  */
 abstract class SimpleHttpServer extends SimpleHttpServerBase {
   import collection.mutable.HashMap
   private val mappings = new HashMap[String, () => Any]
@@ -42,6 +49,10 @@ abstract class SimpleHttpServer extends SimpleHttpServerBase {
   }
 }
 
+/** Example handler-based HTTP server.
+  *
+  * NOTE: for documentation purposes only; not used by [[StudyTeam]].
+  */
 class HelloApp extends SimpleHttpServer {
   get("/hello") {
     "Hello, world!"
