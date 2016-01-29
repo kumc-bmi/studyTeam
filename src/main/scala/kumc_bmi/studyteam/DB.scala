@@ -33,6 +33,10 @@ case class DB[A](g: Connection => A) {
       a <- dba
     } yield f(a)
   }
+
+  def bind[B](f: A => DB[B]): DB[B] = {
+    DB(c => f(g(c))(c))
+  }
 }
 
 object DB {
@@ -43,16 +47,16 @@ object DB {
     * For example:
     * {{{
     * val q1 = DB.query("select 1 + ?", Some(Array("1"))
-    * val addAction = q1 { results =>
+    * val addAction = q1 map (results =>
     *   new RsIterator(results)
-    *     .map {r => r.getInt(1)}.to[Vector]
+    *     .map {r => r.getInt(1)}.to[Vector])
     * }
     * val answers = DbState.reader(src).run(addAction)
     * }}}
     */
-  def query[T](q: String, params: Option[Array[String]] = None):
-      (ResultSet => T) => DB[T] = { f =>
-    DB(conn => f(params match {
+  def query(q: String,
+             params: Option[Array[String]] = None): DB[ResultSet] = {
+    DB({conn: Connection => params match {
       case Some(ps) => {
         val s = conn.prepareStatement(q)
         for ((value, ix) <- ps zipWithIndex) {
@@ -60,8 +64,26 @@ object DB {
         }
         s.executeQuery()
       }
-      case None => conn.createStatement().executeQuery(q)
-    }))
+      case None => (conn.createStatement().executeQuery(q))
+      }
+    })
+  }
+
+  def chainQuery[T](q: String,
+                    params: Option[Array[String]] = None,
+                    chain: T): DB[(ResultSet, T)] = {
+    query(q, params) map {results => (results, chain)}
+  }
+
+  //TODO: pushIn is limited to a Vector, ideally it would not have that limitation
+  def pushIn[T](v: Vector[DB[T]]): DB[Vector[T]] = {
+    def pushBind(x: DB[Vector[T]], y: DB[Vector[T]]): DB[Vector[T]] =
+      x bind {xUnwrap => y bind {yUnwrap => DB(c => xUnwrap ++ yUnwrap)}}
+
+    val prepInternalVectors: Vector[DB[Vector[T]]] =
+      v map { db => db map { x => Vector(x)}}
+
+    prepInternalVectors reduce pushBind
   }
 }
 
@@ -77,7 +99,7 @@ trait Connector {
 
 /** Performs database I/O in order to read or write the database state.
   *
-  * ack: cribbed from functionaljava`fj.control.db.DB` in
+  * ack: cribbed from functionaljava`fj.control.db.DbState` in
   */
 class DbState(pc: Connector, terminal: DB[Unit]) {
 
@@ -124,7 +146,7 @@ object DbState {
     * i.e. one whose terminal action is `rollback`.
     */
   def reader(pc: Connector) = new DbState(pc, rollback)
-  def reader(url: String) = new DbState(driverManager(url), rollback)
+  def reader(url: String): DbState = reader(driverManager(url))
 
 
   /** Creates a database state writer.
@@ -132,10 +154,9 @@ object DbState {
     * i.e. one whose terminal action is `commit`.
     */
   def writer(pc: Connector) = new DbState(pc, commit)
-  def writer(url: String) = new DbState(driverManager(url), commit)
+  def writer(url: String): DbState = writer(driverManager(url))
 
   private val rollback = DB( c => c.rollback())
-
   private val commit = DB(c => c.commit())
 }
 
@@ -153,7 +174,7 @@ class DBConfig(p: java.util.Properties, name: String) extends Connector {
 
   /** Connect according to combination of constructor and given properties.
     *
-    * @throws SQLError
+    * @throws SQLException
     */
   override def connect(connectionProperties: Properties):
       java.sql.Connection = {
@@ -177,22 +198,25 @@ case class TableInfo(cat: String, schem: String, name: String, ty: String) {
     * @param cols information discovered about this table's columns
     */
   def asSQL(cols: Vector[ColumnInfo]): String = {
-    cols.map(_.asSQL).mkString(
-      s"create $ty $schem.$name ( -- catalog: $cat\n", ",\n", ")\n")
+    val colsAsSQL = cols map (_.asSQL)
+    colsAsSQL.mkString(s"create $ty $schem.$name ( -- catalog: $cat\n",
+      ",\n", ")\n")
   }
 }
 object TableInfo {
   /** Database action to discover table info.
     */
   def discover: DB[Vector[TableInfo]] = DB(c => {
-    val md = c.getMetaData();
-    new RsIterator(md.getTables(null, null, "%", null)).map { rs =>
+    val allTableMetaData = new RsIterator(
+      c.getMetaData().getTables(null, null, "%", null));
+
+     (allTableMetaData map {rs: ResultSet =>
       TableInfo(
         rs.getString(1), // could fail? Try? map?
         rs.getString(2),
         rs.getString(3),
         rs.getString(4))
-    }.to[Vector]
+     }).to[Vector]
   })
 
   /** Discover table/column info and dump in SQL format.
@@ -208,21 +232,23 @@ object TableInfo {
 
   /** Discover table/column info.
     *
-    * TODO: remove src param and return one DB action.
-    *       requires going from Vector[DB[X]] to DB[Vector[X]], though.
     */
   def catalog(src: Connector, exclude: Array[String]):
       Vector[(TableInfo, Vector[ColumnInfo])] = {
-    def withCols(ti: TableInfo) = {
+
+    def withColsQuery(ti: TableInfo): DB[(TableInfo, Vector[ColumnInfo])] = {
       // TOP 1 is a MS SQL ism
-      val cols = DbState.reader(src).run(
-        DB.query("SELECT TOP 1 * FROM " + ti.name) { results =>
-          Relation.domains(results) })
-      (ti, cols)
+      val query = DB.chainQuery("SELECT TOP 1 * FROM " + ti.name, chain = ti)
+      val resultsTransform = {resultsAndChain: (ResultSet, TableInfo) =>
+        (resultsAndChain._2, Relation.domains(resultsAndChain._1))
+      }
+      query map resultsTransform
     }
 
-    val tables: Vector[TableInfo] = DbState.reader(src).run(TableInfo.discover)
-    tables map withCols
+    val withTableInfoCollectColumns =
+      TableInfo.discover bind { tables => DB.pushIn(tables map withColsQuery) }
+
+    DbState.reader(src).run(withTableInfoCollectColumns)
   }
 }
 
@@ -257,7 +283,7 @@ object Relation {
     * Value is taken from `ResultSet.getString`.
     */
   def record(results: ResultSet): Vector[(String, String, Option[String])] = {
-    domains(results).zipWithIndex.map { case (col, ix) =>
+    domains(results).zipWithIndex map { case (col, ix) =>
       (col.label, col.typeName, Option(results.getString(ix + 1)))
     }
   }

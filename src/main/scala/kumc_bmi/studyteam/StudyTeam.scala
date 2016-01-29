@@ -10,7 +10,7 @@ import scala.util.{ Try, Success, Failure }
 /**
   * Provides HTTP access to study teams from e-compliance DB.
   *
-  * @see [[main]] for command-line usage.
+  * @see [[StudyTeam.main]] for command-line usage.
   */
 object StudyTeam {
   /**
@@ -103,10 +103,12 @@ object StudyTeam {
 
   private def exploreQuery(src: Connector, out: PrintStream, sql: String, params: Option[Array[String]] = None) {
     out.println(s"query: $sql params: $params")
-    DbState.reader(src).run(DB.query(sql, params) { results =>
-      new RsIterator(results)
-        .foreach {r => out.println(Relation.asJSON(r)) }
-    })
+
+    def printResult(results: ResultSet) {
+      new RsIterator(results) map {r => out.println(Relation.asJSON(r)) }}
+
+    val exploreQuery = DB.query(sql, params) map printResult
+    DbState.reader(src).run(exploreQuery)
   }
 
   /** Show `_studyTeamMemberInfo` records with a given last name.
@@ -189,8 +191,8 @@ join KU_PersonView p on p.OID = tm.[studyTeamMember.oid]
 where irb.ID = ?
 """
     DbState.reader(src).run(
-      DB.query(idQ, Some(Array(studyId))) { results =>
-        new RsIterator(results).map(Relation.asJSON).mkString("[\n", ",\n", "]\n")
+      DB.query(idQ, Some(Array(studyId))) map { results =>
+        (new RsIterator(results) map Relation.asJSON) mkString("[\n", ",\n", "]\n")
       })
   }
 
@@ -198,7 +200,7 @@ where irb.ID = ?
     *
     * @see [[DbState]]
     */
-  def querySum: DB[String] = DB.query("SELECT 1+1 as sum") { results =>
+  def querySum: DB[String] = DB.query("SELECT 1+1 as sum") map { results =>
     results.next() // hmm... Try?
     results.getString("sum")
   }

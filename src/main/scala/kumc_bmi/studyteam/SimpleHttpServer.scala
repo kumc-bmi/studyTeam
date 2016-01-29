@@ -1,6 +1,7 @@
 package kumc_bmi.studyteam
 
 import java.net.InetSocketAddress
+import java.nio.charset.StandardCharsets
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 
 /** HTTP server using the HttpServer class that is built-in in JDK6.
@@ -16,10 +17,10 @@ abstract class SimpleHttpServerBase(val socketAddress: String = "127.0.0.1",
   server.createContext("/", this)
 
   def respond(exchange: HttpExchange, code: Int = 200, body: String = "") {
-    val bytes = body.getBytes
+    val bytes = body.getBytes(StandardCharsets.UTF_8)
     exchange.sendResponseHeaders(code, bytes.size)
     exchange.getResponseBody.write(bytes)
-    exchange.getResponseBody.write("\r\n\r\n".getBytes)
+    exchange.getResponseBody.write("\r\n\r\n".getBytes(StandardCharsets.UTF_8))
     exchange.getResponseBody.close()
     exchange.close()
   }
