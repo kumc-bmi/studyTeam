@@ -148,7 +148,7 @@ object StudyTeam {
     exploreQuery(src, out,
       """
 SELECT p.lastName, p.firstName
-     , p.userId, p.[Employee ID]
+     , p.userId, p.ID as [Employee ID]
      , p.EmailPreferred, p.BusinesPhone
      , p.accountDisabled
      , irb.ID, irb.State, irb.[Date Expiration], irb.ParentStudyOid, irb.[Full Study Title]
@@ -182,7 +182,7 @@ where [Full Study Title] like ('%' + ? + '%')
     */
   def team(src: Connector, studyId: String): String = {
     val idQ = """
-SELECT p.[Employee ID], p.userId, p.accountDisabled
+SELECT p.ID as [Employee ID], p.userId, p.accountDisabled
      , p.lastName, p.firstName, p.EmailPreferred, p.BusinesPhone
      , irb.ID, irb.State, irb.[Date Expiration], irb.[Full Study Title]
 from _studyTeamMemberInfo tm
