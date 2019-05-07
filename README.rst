@@ -4,15 +4,17 @@ by Dan Connolly, KUMC Medical Informatics
 Copyright (c) 2016 University of Kansas Medical Center
 
 
-Build-time Configuration
+Build
+-----
+
+Use `sbt assembly` to build a self-contained jar.
+
+
+Configuration
 ------------------------
 
 See `ecomplaince.properties.example` for a template for database
 access details. The `http.port` should also be set here.
-
-Then `sbt package` should work as usual.
-
-*TODO: Add a build file to set project name.*
 
 
 Usage
@@ -20,7 +22,7 @@ Usage
 
 To start the service:
 
-  java -jar studyTeam.jar --serve
+  java -jar studyTeam.jar --config ecompliance.properties --serve
 
 To look up members of a study by ID:
 
