@@ -94,6 +94,7 @@ object StudyTeam {
       // Silently ignore syntax errors in http.port property
       val port = Try(config.getProperty("http.port").toInt)
         .getOrElse(defaultPort);
+      System.err.println(s"serving on port $port")
       new StudyServer(src, port).start()
     }
   }
@@ -211,16 +212,25 @@ where irb.ID = ?
 
   /** Try to get config properties.
     *
-    * @param resource optional name of resource
+    * @param fn optional name of properties file
     * @see defaultConfig
     */
-  def getConfig(resource: Option[String]): Try[java.util.Properties] = {
+  def getConfig(fn: Option[String]): Try[java.util.Properties] = {
     import java.sql.DriverManager
+    import java.io.{InputStream, FileInputStream}
 
-    val config_fn = resource.getOrElse(defaultConfig)
-    val klass = this.getClass()
-    Option(klass.getResourceAsStream(config_fn)) match {
-      case Some(stream) => {
+    val tryStream: Try[InputStream] = fn match {
+      case Some(n) => Try(new FileInputStream(n))
+      case None => {
+        val klass = this.getClass()
+        Option(klass.getResourceAsStream(defaultConfig)) match {
+          case Some(s) => Success(s)
+          case None => Failure(new RuntimeException(s"$klass.getResourceAsStream($defaultConfig) returned null"))
+        }
+      }
+    }
+    tryStream match {
+      case Success(stream) => {
         val p = new Properties()
         Try(p.load(stream)) map { ok =>
           if ("true" == p.getProperty("verbose")) {
@@ -229,7 +239,7 @@ where irb.ID = ?
           p
         }
       }
-      case None => Failure(new RuntimeException(s"$klass.getResourceAsStream($config_fn) returned null"))
+      case Failure(why) => Failure(why)
     }
   }
 }
