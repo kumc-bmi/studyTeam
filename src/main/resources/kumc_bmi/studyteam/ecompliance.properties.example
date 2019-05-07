@@ -1,12 +1,10 @@
 # Title:Click Data From HURON Via KUL
 # Notes:https://bmi-work.kumc.edu/work/ticket/3901#ticket
 
-# We assume the SQLServer .jar is in lib:
-#
-# studyTeam> unzip -l lib/sqljdbc.jar |grep SQLServerDriver
-#      6253  2007-10-03 11:37   com/microsoft/sqlserver/jdbc/SQLServerDriver.class
-
 src.driver = com.microsoft.sqlserver.jdbc.SQLServerDriver
 src.url = jdbc:sqlserver://...host...;DatabaseName=...ecompliance
 src.username=...
 src.password=...
+
+http.port=8787
+verbose=true
