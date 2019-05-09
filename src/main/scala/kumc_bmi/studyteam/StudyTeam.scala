@@ -91,15 +91,18 @@ object StudyTeam {
     }
 
     if (flag("--serve")) {
+      val host = Try(config.getProperty("http.host"))
+        .getOrElse(defaultHost);
       // Silently ignore syntax errors in http.port property
       val port = Try(config.getProperty("http.port").toInt)
         .getOrElse(defaultPort);
-      System.err.println(s"serving on port $port")
-      new StudyServer(src, port).start()
+      System.err.println(s"serving at $host:$port")
+      new StudyServer(src, host, port).start()
     }
   }
 
   /** HTTP server port */
+  val defaultHost = "127.0.0.1";
   val defaultPort = 8080;
 
   private def exploreQuery(src: Connector, out: PrintStream, sql: String, params: Option[Array[String]] = None) {
@@ -249,7 +252,8 @@ where irb.ID = ?
   * @param port server listening port
   * @param src [[Connector]] to e-compliance DB.
   */
-class StudyServer(src: Connector, port: Int) extends SimpleHttpServerBase(port=port) {
+class StudyServer(src: Connector, socketAddress: String, port: Int)
+    extends SimpleHttpServerBase(socketAddress=socketAddress, port=port) {
   import com.sun.net.httpserver.HttpExchange
 
   val pattern = "id=(.*)".r
