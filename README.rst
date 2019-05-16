@@ -4,14 +4,14 @@ by Dan Connolly, KUMC Medical Informatics
 Copyright (c) 2016 University of Kansas Medical Center
 
 
-Build
------
+Dependencies: JDBC driver
+-------------------------
 
-Use `sbt assembly` to build a self-contained jar.
+Note the `@Grab` annotation atop `StudyTeam.groovy`.
 
 
 Configuration
-------------------------
+-------------
 
 See `ecomplaince.properties.example` for a template for database
 access details. The `http.port` should also be set here.
@@ -22,7 +22,7 @@ Usage
 
 To start the service:
 
-  java -jar studyTeam.jar --config ecompliance.properties --serve
+  groovy StudyTeam.groovy --config ecompliance.properties --serve
 
 To look up members of a study by ID:
 
@@ -34,7 +34,3 @@ Design, Documentation, and Testing
 
 See the main class, `kumc_bmi.studyTeam.StudyTeam`, for details,
 including integration testing.
-
-Unit tests are not provided.
-
-Use `sbt doc` to build API documentation.
