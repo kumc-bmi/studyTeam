@@ -2,6 +2,7 @@
 @GrabConfig(systemClassLoader=true)
 @Grab(group='com.microsoft.sqlserver', module='mssql-jdbc', version='7.2.0.jre8')
 
+import java.net.InetSocketAddress
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.SQLException
@@ -10,6 +11,7 @@ import java.util.logging.Logger
 import javax.sql.DataSource
 
 import com.sun.net.httpserver.HttpExchange
+import com.sun.net.httpserver.HttpServer
 
 import groovy.json.JsonOutput
 import groovy.sql.Sql
@@ -24,10 +26,14 @@ class StudyTeam {
     public static void main(String[] args) {
         def fail = { ex -> System.err.println(ex); System.exit(1) }
         def dbAccess = { String u, Properties p -> DriverManager.getConnection(u, p) }
-        run(new CLI(args: args), System.out, fail, dbAccess)
+        def listen = { InetSocketAddress a, int b -> HttpServer.create(a, b) }
+        run(new CLI(args: args), System.out, fail, dbAccess, listen)
     }
 
-    public static void run(CLI cli, PrintStream out, Closure fail, Closure<Connection> dbAccess) {
+    public static void run(CLI cli, PrintStream out,
+                           Closure fail,
+                           Closure<Connection> dbAccess,
+                           Closure<HttpServer> listen) {
         def config = new Properties()
         try {
             cli.arg('--config') { String fn ->
@@ -35,7 +41,7 @@ class StudyTeam {
             }
         } catch (java.io.FileNotFoundException ex) { fail(ex) }
 
-        def src = [config: config, name: "src", dbAccess: dbAccess] as DBConfig
+        def src = new DBConfig(config: config, name: "src", dbAccess: dbAccess)
 
         try {
             cli.arg("--by-id") { String id ->
@@ -49,7 +55,7 @@ class StudyTeam {
 
             def port = fallback("8080")(config.getProperty("http.port")) as int
             logger.info("serving at http://$host:$port")
-            new StudyServer(src: src, socketAddress: host, port: port).start()
+            new StudyServer(src: src, socketAddress: host, port: port).start(listen)
         }
     }
 

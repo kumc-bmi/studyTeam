@@ -31,11 +31,11 @@ abstract class SimpleHttpServerBase implements HttpHandler {
         exchange.close()
     }
 
-    def start() {
+    def start(Closure<HttpServer> create) {
         InetSocketAddress address = new InetSocketAddress(socketAddress, port)
         int backlog = 0
 
-        server = HttpServer.create(address, backlog)
+        server = create(address, backlog)
         server.createContext("/", this)
         server.start()
     }
