@@ -96,7 +96,7 @@ class DBConfig extends NoopDataSource {
     Properties config
     String name
     Closure dbAccess
-    // Logger logger = Logger.getLogger("")
+    static private Logger logger = Logger.getLogger("")
 
     String prop(String p) {
         def val = config.getProperty(name + p)
@@ -117,6 +117,10 @@ class DBConfig extends NoopDataSource {
         // throws an exception. hmm.
         dbAccess(url, connectionProperties)
     }
+
+    Logger getParentLogger() {
+        logger
+    }
 }
 
 
@@ -133,7 +137,7 @@ abstract class NoopDataSource implements DataSource {
     }
 
     PrintWriter getLogWriter() {
-        throw new SQLException()
+        null
     }
 
     Logger getParentLogger() {
@@ -145,7 +149,7 @@ abstract class NoopDataSource implements DataSource {
     }
 
     int getLoginTimeout() {
-        throw new SQLException()
+        0
     }
 
     void setLoginTimeout(int t) {
