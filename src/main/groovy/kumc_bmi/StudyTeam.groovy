@@ -8,6 +8,7 @@ import java.sql.DriverManager
 import java.sql.SQLException
 import java.sql.SQLFeatureNotSupportedException
 import java.util.logging.Logger
+import static java.util.logging.Level.SEVERE
 import javax.sql.DataSource
 
 import com.sun.net.httpserver.HttpExchange
@@ -218,7 +219,14 @@ class StudyServer extends SimpleHttpServerBase {
         if (m.find()) {
             String id = m.group(1)
             logger.info("GET id=$id")
-            List info = StudyTeam.team(src, id)
+            List info
+            try {
+                info = StudyTeam.team(src, id)
+            } catch (java.sql.SQLException ex) {
+                logger.log(SEVERE, ex.toString())
+                respond(exchange, 500, "cannot access team membership")
+                return
+            }
             logger.info("protocol $id has ${info.size()} study team members")
             def text = JsonOutput.prettyPrint(JsonOutput.toJson(info))
             respond(exchange, 200, text)
