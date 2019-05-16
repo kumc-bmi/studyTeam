@@ -51,10 +51,9 @@ class StudyTeam {
         } catch (java.sql.SQLException ex) { fail(ex) }
 
         if (cli.flag("--serve")) {
-            def fallback = { d -> { s -> s == null ? d : s } }
-            String host = fallback("127.0.0.1")(config.getProperty("http.host"))
+            String host = config.getProperty("http.host") ?: "127.0.0.1"
 
-            def port = fallback("8080")(config.getProperty("http.port")) as int
+            def port = (config.getProperty("http.port") ?: "8080") as int
             logger.info("serving at http://$host:$port")
             new StudyServer(src: src, socketAddress: host, port: port).start(listen)
         }
@@ -213,7 +212,7 @@ class StudyServer extends SimpleHttpServerBase {
      * @see [[StudyTeam.team]]
      */
     void handle(HttpExchange exchange) {
-        String query = exchange.getRequestURI().getQuery()
+        String query = exchange.requestURI.query
 
         def m = query =~ /id=(.*)/
         if (m.find()) {

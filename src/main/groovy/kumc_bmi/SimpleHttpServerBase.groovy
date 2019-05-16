@@ -24,7 +24,7 @@ abstract class SimpleHttpServerBase implements HttpHandler {
     def respond(HttpExchange exchange, int code, String body) {
         def bytes = body.getBytes(StandardCharsets.UTF_8)
         exchange.sendResponseHeaders(code, bytes.size())
-        def out = exchange.getResponseBody()
+        def out = exchange.responseBody
         out.write(bytes)
         out.write("\r\n\r\n".getBytes(StandardCharsets.UTF_8))
         out.close()
