@@ -9,31 +9,31 @@ import java.sql.SQLFeatureNotSupportedException
 import java.util.logging.Logger
 import javax.sql.DataSource
 
-import groovy.sql.Sql
 import groovy.json.JsonOutput
+import groovy.sql.Sql
+import groovy.transform.CompileStatic
 
-
+@CompileStatic
 class StudyTeam {
     public static void main(String[] args) {
         def fail = { ex -> System.err.println(ex); System.exit(1) }
-        def dbAccess = { u, p -> DriverManager.getConnection(u, p) }
+        def dbAccess = { String u, Properties p -> DriverManager.getConnection(u, p) }
         run(new CLI(args: args), System.out, fail, dbAccess)
     }
 
-    public static void run(cli, out, fail, dbAccess) {
+    public static void run(CLI cli, PrintStream out, Closure fail, Closure<Connection> dbAccess) {
         def config = new Properties()
         try {
-            cli.arg('--config') { fn ->
+            cli.arg('--config') { String fn ->
                 config = getConfig(new File(fn))
             }
         } catch (java.io.FileNotFoundException ex) { fail(ex) }
 
-        def src = new DBConfig(config: config, name: "src",
-                               dbAccess: { u, p -> DriverManager.getConnection(u, p) })
+        def src = [config: config, name: "src", dbAccess: dbAccess] as DBConfig
 
         try {
-            cli.arg("--by-id") { id ->
-                byId(src, id, System.out)
+            cli.arg("--by-id") { String id ->
+                byId(src, id, out)
             }
         } catch (java.sql.SQLException ex) { fail(ex) }
     }
@@ -46,7 +46,7 @@ class StudyTeam {
         properties
     }
 
-    static def byId(src, id, out) {
+    static def byId(DataSource src, String id, PrintStream out) {
         out.println("Members of study with ID=$id:")
         def info = team(src, id)
         out.println(JsonOutput.prettyPrint(JsonOutput.toJson(info)))
@@ -68,11 +68,13 @@ class StudyTeam {
     }
 }
 
+
+@CompileStatic
 class CLI {
     String[] args
 
     def flag = { args.contains(it) }
-    def arg = { String sentinel, thunk ->
+    def arg(String sentinel, Closure thunk) {
         def i = (args as List).findIndexOf { it == sentinel }
         def l = args.length
         if (i >= 0 && i + 1 < l) {
@@ -89,6 +91,7 @@ class CLI {
  * @param name prefix to distinguish among sets of connection properties;
  *             e.g. `db1.url = ...`, `db2.url = ...`.
  */
+@CompileStatic
 class DBConfig extends NoopDataSource {
     Properties config
     String name
@@ -117,6 +120,7 @@ class DBConfig extends NoopDataSource {
 }
 
 
+@CompileStatic
 abstract class NoopDataSource implements DataSource {
     abstract Connection getConnection()
 
