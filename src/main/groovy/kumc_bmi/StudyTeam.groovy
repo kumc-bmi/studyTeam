@@ -10,7 +10,6 @@ import java.sql.SQLFeatureNotSupportedException
 import java.util.logging.Logger
 import static java.util.logging.Level.SEVERE
 import javax.sql.DataSource
-import commandLine.CLI 
 
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
