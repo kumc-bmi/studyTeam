@@ -91,7 +91,7 @@ class StudyTeam {
 }
 
 
-@Immutable
+
 @CompileStatic
 class CLI {
     String[] args
