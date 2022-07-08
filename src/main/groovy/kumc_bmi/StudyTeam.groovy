@@ -97,7 +97,7 @@ class CLI {
     String[] args
     
     CLI(args_given) {          
-        this.args = args.addAll(args_given)
+        this.args = args
     }
 
     boolean flag(String it) {
