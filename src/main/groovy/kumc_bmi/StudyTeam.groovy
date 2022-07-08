@@ -97,7 +97,7 @@ class CLI {
     String[] args
     
     CLI(args_given) {          
-        this.args = args_given
+        this.args = Eval.me(args_given)
     }
 
     boolean flag(String it) {
