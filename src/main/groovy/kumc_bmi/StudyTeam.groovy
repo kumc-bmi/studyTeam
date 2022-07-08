@@ -28,7 +28,7 @@ class StudyTeam {
         def fail = { ex -> System.err.println(ex); System.exit(1) }
         def dbAccess = { String u, Properties p -> DriverManager.getConnection(u, p) }
         def listen = { InetSocketAddress a, int b -> HttpServer.create(a, b) }
-        run(new CLI(args: args), System.out, fail, dbAccess, listen)
+        run(new CLI(args), System.out, fail, dbAccess, listen)
     }
 
     public static void run(CLI cli, PrintStream out,
@@ -94,11 +94,15 @@ class StudyTeam {
 @CompileStatic
 class CLI {
     String[] args
+    
+    CLI(args_given) {          
+        this.args = args.addAll(args_given)
+    }
 
     boolean flag(String it) {
         args.contains(it)
     }
-
+    
     def arg(String sentinel, Closure thunk) {
         def i = (args as List).findIndexOf { it == sentinel }
         def l = args.length
