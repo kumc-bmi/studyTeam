@@ -98,7 +98,9 @@ class CLI {
     String[] args
     
     CLI(args_given) {          
-        this.args = Eval.me(args_given.toString())
+      def raw_args = Eval.me(args_given.toString())
+      assert raw_args.class == String[]  
+      this.args = raw_args
     }
 
     boolean flag(String it) {
