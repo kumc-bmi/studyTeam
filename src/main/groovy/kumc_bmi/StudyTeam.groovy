@@ -18,6 +18,7 @@ import groovy.json.JsonOutput
 import groovy.sql.Sql
 import groovy.transform.CompileStatic
 import groovy.transform.Immutable
+import groovy.util.Eval.*
 
 @Immutable
 @CompileStatic
@@ -97,7 +98,7 @@ class CLI {
     String[] args
     
     CLI(args_given) {          
-        this.args = args_given.toString()
+        this.args = Eval.me(args_given.toString())
     }
 
     boolean flag(String it) {
