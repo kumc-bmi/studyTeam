@@ -95,6 +95,7 @@ class StudyTeam {
 
 @CompileStatic
 class CLI {
+    private Logger logger = Logger.getLogger("")
     String[] args
     
     CLI(args_given) {
