@@ -97,9 +97,10 @@ class StudyTeam {
 class CLI {
     String[] args
     
-    CLI(args_given) {          
+    CLI(args_given) {
       def raw_args = Eval.me(args_given.toString())
       assert raw_args.class == String[]  
+      logger.critical(raw_args)
       this.args = raw_args
     }
 
