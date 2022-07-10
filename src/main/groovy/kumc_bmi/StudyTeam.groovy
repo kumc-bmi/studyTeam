@@ -99,8 +99,9 @@ class CLI {
     String[] args
     
     CLI(args_given) {
-      this.logger.warning(args_given.toString())
-      this.args = args_given.toString().split(',')
+      raw_args = args_given.toArray(new String[args_given.size()]);
+      this.logger.warning(raw_args)
+      this.args = raw_args
     }
 
     boolean flag(String it) {
