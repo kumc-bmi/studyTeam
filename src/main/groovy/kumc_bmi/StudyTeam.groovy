@@ -100,7 +100,7 @@ class CLI {
     
     CLI(args_given) {
       this.logger.warning(args_given.toString())
-      this.args = raw_args
+      this.args = args_given.toString().split(',')
     }
 
     boolean flag(String it) {
