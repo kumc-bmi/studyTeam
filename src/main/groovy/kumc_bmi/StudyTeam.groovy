@@ -29,8 +29,8 @@ class StudyTeam {
         def fail = { ex -> System.err.println(ex); System.exit(1) }
         def dbAccess = { String u, Properties p -> DriverManager.getConnection(u, p) }
         def listen = { InetSocketAddress a, int b -> HttpServer.create(a, b) }
-        CLI cli = new CLI(args)
-        run(cli, System.out, fail, dbAccess, listen)
+       /* CLI cli = new CLI(args)*/
+        run(new CLI(args_given: args), System.out, fail, dbAccess, listen)
     }
 
     public static void run(CLI cli, PrintStream out,
@@ -92,18 +92,18 @@ class StudyTeam {
 }
 
 
-
+@Immutable
 @CompileStatic
 class CLI {
     private Logger logger = Logger.getLogger("")
-    String[] args
+    String[] args_given
     
-    CLI(args_given) {
-      raw_args = args_given.toArray(new String[args_given.size()]);
-      this.logger.warning(args_given.toString())
-      this.args = args_given.toString().split(',')
-    }
-
+/**    CLI(args_given) {
+*      raw_args = args_given.toArray(new String[args_given.size()]);
+*      this.logger.warning(args_given.toString())
+*      this.args_given = args_given.toString().split(',')
+*    }
+*/
     boolean flag(String it) {
         args.contains(it)
     }
