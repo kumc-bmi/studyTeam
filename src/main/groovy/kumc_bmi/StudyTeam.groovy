@@ -99,9 +99,7 @@ class CLI {
     String[] args
     
     CLI(args_given) {
-      def raw_args = Eval.me(args_given.toString())
-      assert raw_args.class == String[]  
-      logger.warning(raw_args)
+      this.logger.warning(args)
       this.args = raw_args
     }
 
