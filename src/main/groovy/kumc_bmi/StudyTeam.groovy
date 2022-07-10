@@ -99,7 +99,7 @@ class CLI {
     String[] args
     
     CLI(args_given) {
-      this.logger.warning(args)
+      this.logger.warning(args_given)
       this.args = raw_args
     }
 
