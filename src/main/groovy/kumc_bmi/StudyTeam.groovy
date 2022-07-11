@@ -99,10 +99,11 @@ class CLI {
     String[] args_given
     
     CLI(args1) {
-      String[] raw_args
       /*raw_args = args1.toArray(new String[args1.size()]);*/
-      this.logger.warning(args1.toString())
-      this.args_given = args_given.toString().split(',')
+      ArrayList<String> raw_args = ArrayList<String>(args1)
+      str_eq_raw_args = raw_args.toArray(new String[raw_args.size()]);
+      this.logger.warning(str_eq_raw_args.toString())
+      this.args_given = str_eq_raw_args
     }
 
     boolean flag(String it) {
