@@ -99,8 +99,9 @@ class CLI {
     String[] args_given
     
     CLI(args1) {
-      raw_args = args1.toArray(new String[args1.size()]);
-      this.logger.warning(raw_args)
+      String[] raw_args
+      /*raw_args = args1.toArray(new String[args1.size()]);*/
+      this.logger.warning(args1.toString())
       this.args_given = args_given.toString().split(',')
     }
 
