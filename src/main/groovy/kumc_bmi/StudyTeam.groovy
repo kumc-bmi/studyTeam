@@ -95,7 +95,7 @@ class StudyTeam {
 @Immutable
 @CompileStatic
 class CLI {
-    private Logger logger = Logger.getLogger("")
+/*    private Logger logger = Logger.getLogger("")*/
     String[] args_given
     
 /**    CLI(args_given) {
