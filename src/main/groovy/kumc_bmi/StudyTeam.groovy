@@ -105,14 +105,14 @@ class CLI {
 *    }
 */
     boolean flag(String it) {
-        args.contains(it)
+        args_given.contains(it)
     }
     
     def arg(String sentinel, Closure thunk) {
-        def i = (args as List).findIndexOf { it == sentinel }
-        def l = args.length
+        def i = (args_given as List).findIndexOf { it == sentinel }
+        def l = args_given.length
         if (i >= 0 && i + 1 < l) {
-            thunk(args[i + 1]);
+            thunk(args_given[i + 1]);
         } else if (i >= 0) {
             System.err.println("$sentinel requires value argument")
         }
