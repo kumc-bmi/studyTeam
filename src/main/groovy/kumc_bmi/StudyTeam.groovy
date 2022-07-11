@@ -101,7 +101,7 @@ class CLI {
     CLI(args1) {
       /*raw_args = args1.toArray(new String[args1.size()]);*/
       ArrayList<String> raw_args = (ArrayList<String>)args1
-      str_eq_raw_args = raw_args.toArray(new String[raw_args.size()]);
+      String[] str_eq_raw_args = raw_args.toArray(new String[raw_args.size()]);
       this.logger.warning(str_eq_raw_args.toString())
       this.args_given = str_eq_raw_args
     }
