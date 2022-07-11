@@ -92,7 +92,7 @@ class StudyTeam {
 }
 
 
-/*@Immutiable*/
+/*@Immutable*/
 @CompileStatic
 class CLI {
     private Logger logger = Logger.getLogger("")
