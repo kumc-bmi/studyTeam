@@ -18,7 +18,6 @@ import groovy.json.JsonOutput
 import groovy.sql.Sql
 import groovy.transform.CompileStatic
 import groovy.transform.Immutable
-import groovy.util.Eval.*
 
 @Immutable
 @CompileStatic
@@ -96,25 +95,24 @@ class StudyTeam {
 @CompileStatic
 class CLI {
     private Logger logger = Logger.getLogger("")
-    String[] args_given
+    String[] args
     
     CLI(args1) {
       /*raw_args = args1.toArray(new String[args1.size()]);*/
       ArrayList<String> raw_args = (ArrayList<String>)args1
       String[] str_eq_raw_args = raw_args.toArray(new String[raw_args.size()]);
       this.logger.warning(str_eq_raw_args.toString())
-      this.args_given = str_eq_raw_args
+      this.args = str_eq_raw_args
     }
 
     boolean flag(String it) {
-        args_given.contains(it)
-    }
-    
+        args.contains(it)
+    }   
     def arg(String sentinel, Closure thunk) {
-        def i = (args_given as List).findIndexOf { it == sentinel }
-        def l = args_given.length
+        def i = (args as List).findIndexOf { it == sentinel }
+        def l = args.length
         if (i >= 0 && i + 1 < l) {
-            thunk(args_given[i + 1]);
+            thunk(args[i + 1]);
         } else if (i >= 0) {
             System.err.println("$sentinel requires value argument")
         }
