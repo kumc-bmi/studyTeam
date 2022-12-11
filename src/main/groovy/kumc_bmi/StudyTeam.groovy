@@ -1,6 +1,6 @@
 // http://groovy-lang.org/grape.html#Grape-JDBCDrivers
 @GrabConfig(systemClassLoader=true)
-@Grab(group='com.microsoft.sqlserver', module='mssql-jdbc', version='10.2.0.jre17')
+@Grab(group='com.microsoft.sqlserver', module='mssql-jdbc', version='11.2.1.jre17')
 
 import java.net.InetSocketAddress
 import java.sql.Connection
