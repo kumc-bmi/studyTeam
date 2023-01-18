@@ -1,6 +1,6 @@
 // http://groovy-lang.org/grape.html#Grape-JDBCDrivers
 @GrabConfig(systemClassLoader=true)
-@Grab(group='com.microsoft.sqlserver', module='mssql-jdbc', version='7.2.0.jre8')
+@Grab(group='com.microsoft.sqlserver', module='mssql-jdbc', version='11.2.1.jre17')
 
 import java.net.InetSocketAddress
 import java.sql.Connection
@@ -28,7 +28,8 @@ class StudyTeam {
         def fail = { ex -> System.err.println(ex); System.exit(1) }
         def dbAccess = { String u, Properties p -> DriverManager.getConnection(u, p) }
         def listen = { InetSocketAddress a, int b -> HttpServer.create(a, b) }
-        run(new CLI(args: args), System.out, fail, dbAccess, listen)
+        CLI cli = new CLI(args)
+        run(cli, System.out, fail, dbAccess, listen)
     }
 
     public static void run(CLI cli, PrintStream out,
@@ -90,15 +91,23 @@ class StudyTeam {
 }
 
 
-@Immutable
+/*@Immutable*/
 @CompileStatic
 class CLI {
+    private Logger logger = Logger.getLogger("")
     String[] args
+    
+    CLI(args1) {
+      /*raw_args = args1.toArray(new String[args1.size()]);*/
+      ArrayList<String> raw_args = (ArrayList<String>)args1
+      String[] str_eq_raw_args = raw_args.toArray(new String[raw_args.size()]);
+      this.logger.warning(str_eq_raw_args.toString())
+      this.args = str_eq_raw_args
+    }
 
     boolean flag(String it) {
         args.contains(it)
-    }
-
+    }   
     def arg(String sentinel, Closure thunk) {
         def i = (args as List).findIndexOf { it == sentinel }
         def l = args.length
